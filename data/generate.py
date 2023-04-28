@@ -2,13 +2,13 @@ import itertools
 import csv
 import os
 import openai
-from strenum import StrEnum
+from enum import Enum
 
-openai.api_key = "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"
+openai.api_key = "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"
 
-class Author(StrEnum):
-    HUMAN = 'human'
-    CHATGPT = 'chatgpt'
+class Author(Enum):
+    HUMAN = 0
+    CHATGPT = 1
 
 '''
 Reads inputs one by one from read_path, rephrases each row with ChatGPT, and writes the results to write_path
@@ -44,10 +44,10 @@ def generate(start, stop, read_path, write_path, mode):
 def main():
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     rel_read_path = "arxiv_abstracts.csv"
-    rel_write_path = "data.csv"
+    rel_write_path = "test.csv"
     read_path = os.path.join(script_dir, rel_read_path)
     write_path = os.path.join(script_dir, rel_write_path)
-    generate(1, 5000, read_path, write_path, 'a')
+    generate(601, 700, read_path, write_path, 'a')
 
 if __name__ == "__main__":
     main()
