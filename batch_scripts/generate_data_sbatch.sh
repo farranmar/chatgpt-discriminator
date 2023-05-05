@@ -5,5 +5,5 @@
 #SBATCH -t 6:00:00
 
 
-echo "going to call python ../data/generate.py"
-python ../data/generate.py
+echo "going to call python -u ../data/generate.py"
+python -u ../data/generate.py
