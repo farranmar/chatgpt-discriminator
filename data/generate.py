@@ -99,9 +99,9 @@ def main(args):
     read_path = os.path.join(script_dir, rel_read_path)
     # write_path = os.path.join(script_dir, rel_write_path)
 
-    start = 5186
-    num_requests = 3
-    num_threads = 1
+    start = 5187
+    num_requests = 504
+    num_threads = 8
     num_requests_per_thread = math.floor(num_requests / num_threads)
     threads = []
     for i in range(num_threads):

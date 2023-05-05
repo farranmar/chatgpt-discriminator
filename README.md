@@ -17,15 +17,18 @@ welcome to our DL final project :)
 
 <br>
 
-2. Make sure `generate.py` has the correct api key, starting index, number of requests, and number of threads set
+2. Make sure `generate.py` has the correct starting index, number of requests, and number of threads set
 
 3. `cd` into the `batch-scripts` directory  
+
+4. Set your api key environment variable:  
+`export APIKEY=<your api key>`
 
 4. Run this command to submit the batch job:  
 `sbatch generate_data_sbatch.sh`  
 It will return a batch job number, the output of this job will be saved in the `batch-scripts` directory in a file named `slurm-<job number>.out`
 
-5. Once the job finishes running (idk how to tell when it is done tbh), the generated data will be stored in the various `thread0.csv`, `thread1.csv`, etc files in the `data/threads` directory. To combine these all into one file, `cd` into the `data/threads` directory and make sure all the files in there contain data you want to combine. If there are old files from a previous run that used more threads, delete the ones from old threads. Once the directory contains all the csvs you want to combine, run:  
+5. Once the job finishes running (idk how to tell when it is done tbh, other than checking the slurm file), the generated data will be stored in the various `thread0.csv`, `thread1.csv`, etc files in the `data/threads` directory. To combine these all into one file, `cd` into the `data/threads` directory and make sure all the files in there contain data you want to combine. If there are old files from a previous run that used more threads, delete the ones from old threads. Once the directory contains all the csvs you want to combine, run:  
 `cat *.csv >combined.csv`  
 Then, move the `combined.csv` file to the `data/partials` directory (and consider renaming it to indicate what indexes of data are in there).
 
