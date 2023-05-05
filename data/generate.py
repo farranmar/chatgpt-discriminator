@@ -5,18 +5,23 @@ import openai
 from enum import Enum
 import threading
 import math
+import argparse
 from tenacity import (
     retry,
     stop_after_attempt,
     wait_random_exponential,
 )  # for exponential backoff
 
-openai.api_key = "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"
-
 class Author(Enum):
     HUMAN = 0
     CHATGPT = 1
 
+
+def parseArguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--api_key", type=str, default="")
+    args = parser.parse_args()
+    return args
 
 @retry(wait=wait_random_exponential(min=5, max=60), stop=stop_after_attempt(10), reraise=True)
 def completion_with_backoff(human_abstract):
@@ -86,7 +91,8 @@ def generate(start, stop, read_path, write_path, mode):
         print("total written:", total_written)
 
 
-def main():
+def main(args):
+    openai.api_key = args.api_key
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     rel_read_path = "arxiv_abstracts.csv"
     # rel_write_path = "first5k.csv"
@@ -94,8 +100,8 @@ def main():
     # write_path = os.path.join(script_dir, rel_write_path)
 
     start = 5186
-    num_requests = 24
-    num_threads = 8
+    num_requests = 3
+    num_threads = 1
     num_requests_per_thread = math.floor(num_requests / num_threads)
     threads = []
     for i in range(num_threads):
@@ -113,4 +119,5 @@ def main():
     # generate(104, 3000, read_path, write_path, 'a')
 
 if __name__ == "__main__":
-    main()
+    args = parseArguments()
+    main(args)

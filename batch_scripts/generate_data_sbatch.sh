@@ -6,4 +6,4 @@
 
 
 echo "going to call python -u ../data/generate.py"
-python -u ../data/generate.py
+python -u ../data/generate.py --api_key $APIKEY
