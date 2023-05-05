@@ -11,5 +11,5 @@ generate="$proj_dir_path/data/generate.py"
 echo "script_path=$script_path"
 echo "script_dir_path=$script_dir_path"
 echo "proj_dir_path=$proj_dir_path"
-echo "going to call python $generate"
-python $generate
+echo "going to call python ../$generate"
+python ../$generate
