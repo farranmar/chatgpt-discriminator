@@ -41,44 +41,49 @@ write_path: the path to the csv to write to, writes each abstract in the first c
 mode: mode with which to write. 'w' writes from the beginning of the file, 'a' appends to the end
 '''
 def generate(start, stop, read_path, write_path, mode):
-    total_skipped = 0;
-    total_written = 0;
-    with open(read_path) as read_csv, open(write_path, mode) as write_csv:
-        for line in itertools.islice(csv.reader(read_csv), start, stop):
-            human_abstract = line[2].replace('\n', ' ')
-            if len(human_abstract) > 2500: 
-                print("human abstract too long (", len(human_abstract), " characters), skipping")
-                total_skipped += 1
-                continue
-            success = False
-            try:
-                completion = completion_with_backoff(human_abstract)
-                success = True
-            except openai.error.Timeout:
-                print("Request timed out")
-                total_skipped += 1
-            except openai.error.RateLimitError:
-                print("Rate limit error")
-                total_skipped += 1
-            except Exception as e:
-                print("Request errored:", e)
-                total_skipped += 1
-            if not success: continue
-            chatgpt_abstract = completion.choices[0].message.content.replace('\n', ' ')
-            if len(chatgpt_abstract) > 2500:
-                print("chatgpt abstract too long (", len(chatgpt_abstract), " characters), skipping")
-                total_skipped += 1
-                continue
-            if human_abstract == chatgpt_abstract: 
-                print("rephrased abstract identical to original, skipping")
-                total_skipped += 1
-                continue
-            csv_writer = csv.writer(write_csv)
-            csv_writer.writerow([human_abstract, Author.HUMAN.value])
-            csv_writer.writerow([chatgpt_abstract, Author.CHATGPT.value])
-            total_written += 1
-    print("total skipped:", total_skipped)
-    print("total written:", total_written)
+    total_skipped = 0
+    total_written = 0
+    try:
+        with open(read_path) as read_csv, open(write_path, mode) as write_csv:
+            for line in itertools.islice(csv.reader(read_csv), start, stop):
+                human_abstract = line[2].replace('\n', ' ')
+                if len(human_abstract) > 2500: 
+                    print("human abstract too long (", len(human_abstract), " characters), skipping")
+                    total_skipped += 1
+                    continue
+                success = False
+                try:
+                    completion = completion_with_backoff(human_abstract)
+                    success = True
+                except openai.error.Timeout:
+                    print("Request timed out")
+                    total_skipped += 1
+                except openai.error.RateLimitError:
+                    print("Rate limit error")
+                    total_skipped += 1
+                except Exception as e:
+                    print("Request errored:", e)
+                    total_skipped += 1
+                if not success: continue
+                chatgpt_abstract = completion.choices[0].message.content.replace('\n', ' ')
+                if len(chatgpt_abstract) > 2500:
+                    print("chatgpt abstract too long (", len(chatgpt_abstract), " characters), skipping")
+                    total_skipped += 1
+                    continue
+                if human_abstract == chatgpt_abstract: 
+                    print("rephrased abstract identical to original, skipping")
+                    total_skipped += 1
+                    continue
+                csv_writer = csv.writer(write_csv)
+                csv_writer.writerow([human_abstract, Author.HUMAN.value])
+                csv_writer.writerow([chatgpt_abstract, Author.CHATGPT.value])
+                total_written += 1
+        print("total skipped:", total_skipped)
+        print("total written:", total_written)
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt, stats so far:")
+        print("total skipped:", total_skipped)
+        print("total written:", total_written)
 
 
 def main():
