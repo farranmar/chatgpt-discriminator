@@ -32,7 +32,24 @@ It will return a batch job number, the output of this job will be saved in the `
 `cat *.csv >combined.csv`  
 Then, move the `combined.csv` file to the `data/partials` directory (and consider renaming it to indicate what indexes of data are in there).
 
-6. Push the generated data to git
+6. Push the generated data to git  
+
+
+## Training on Oscar
+
+1. SSH into oscar:  
+`ssh -X <username>@ssh.ccv.brown.edu`  
+
+<details>
+  <summary>Notes for setting up the first time</summary>
+  
+  The first time you do this, you must clone this repo and install all necessary packages etc. I tihnk the easiest way to do this is by creating the same `csci1470` conda environment we used for all the HWs by following HW0, since it has most of the packages we need except for openai. Once you do this and have activated the environment, install openai:  
+    `conda install -c conda-forge openai`  
+    I also had to install libstdcxx-ng to train:  
+    `conda install -c anaconda libstdcxx-ng`
+</details>
+
+<br>
 
 
 
