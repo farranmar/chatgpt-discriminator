@@ -51,6 +51,7 @@ def generate(start, stop, read_path, write_path, mode):
     try:
         with open(read_path) as read_csv, open(write_path, mode) as write_csv:
             for line in itertools.islice(csv.reader(read_csv), start, stop):
+                print("wowee things occuring")
                 human_abstract = line[2].replace('\n', ' ')
                 if len(human_abstract) > 2500: 
                     print("human abstract too long (", len(human_abstract), " characters), skipping")
@@ -104,8 +105,8 @@ def main(args):
     # write_path = os.path.join(script_dir, rel_write_path)
 
     start = 18171
-    num_requests = 21000
-    num_threads = 8
+    num_requests = 1
+    num_threads = 1
     num_requests_per_thread = math.floor(num_requests / num_threads)
     threads = []
     for i in range(num_threads):
