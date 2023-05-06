@@ -1,5 +1,5 @@
 from preprocess import get_data
-from transformers import AutoTokenizer, TFDistilBertModel
+from transformers import AutoTokenizer, TFDistilBertModel, TFBertModel
 import tensorflow as tf
 import numpy as np
 import math
@@ -16,6 +16,7 @@ def parseArguments():
     # only if continuing to train on existing weights - if just testing use --test_only
     # also this will automatically save the weights back as well
     parser.add_argument("--save_weights", action="store_true")
+    parser.add_argument("--bert", action="store_true")
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
     parser.add_argument("--test_gui", action="store_true")
@@ -58,8 +59,12 @@ def train(model, train_abstracts, train_labels, args):
     train_labels = tf.gather(train_labels, indices)
     train_abstracts = train_abstracts[:batch_size*num_batches]
     train_labels = train_labels[:batch_size*num_batches]
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
+    if args.bert:
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        bert_model = TFBertModel.from_pretrained("bert-base-uncased")
+    else:
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+        bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
     # train_abstracts_list = train_abstracts.numpy().tolist()
     # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
     # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
@@ -73,7 +78,7 @@ def train(model, train_abstracts, train_labels, args):
         batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
         tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
                                         padding='max_length', truncation=True) # default max_length 512
-        hidden_states = distil_bert(tokenized_abstracts).last_hidden_state
+        hidden_states = bert_model(tokenized_abstracts).last_hidden_state
         hidden_states = tf.reshape(hidden_states, (batch_size, -1))
 
         with tf.GradientTape() as tape:
