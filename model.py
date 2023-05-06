@@ -47,14 +47,12 @@ class GPTClassifier(tf.keras.Model):
 
     def call(self, inputs):
         outputs = self.seq_model(inputs)
-        print("putputs shape", outputs.shape)
         return outputs
 
 def train(model, train_abstracts, train_labels, args):
-    print("training")
     batch_size = args.batch_size
     num_batches = math.floor(train_abstracts.shape[0] / batch_size)
-    indices = tf.random.shuffle(tf.range(train_abstracts.shape[0]))
+    indices = tf.random.shuffle(tf.range(train_abstracts.shape[0]-1))
     train_abstracts = tf.gather(train_abstracts, indices)
     train_labels = tf.gather(train_labels, indices)
     train_abstracts = train_abstracts[:batch_size*num_batches]
@@ -73,7 +71,6 @@ def train(model, train_abstracts, train_labels, args):
     for i in range(num_batches):
         batch_abstracts = train_abstracts[i * batch_size:(i+1)*batch_size]
         batch_labels = train_labels[i * batch_size:(i+1)*batch_size]
-        print("batch abstract data type is", batch_abstracts.dtype)
         batch_abstracts_list = batch_abstracts.numpy().tolist()
         batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
         tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
@@ -83,8 +80,6 @@ def train(model, train_abstracts, train_labels, args):
 
         with tf.GradientTape() as tape:
             outputs = model(hidden_states)
-            print("outputs", outputs.dtype)
-            print("batch_lbables", batch_labels.dtype)
             loss = model.loss(outputs, batch_labels)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
