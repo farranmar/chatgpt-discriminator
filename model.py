@@ -13,10 +13,10 @@ weights_dir = os.path.join(script_dir,"model_checkpts")
 def parseArguments():
     parser = argparse.ArgumentParser()
     ### ONLY USE ONE OF (--load_weights, --save_weights, --test_gui) ###
-    parser.add_argument("--load_weights", action="store_true") 
+    parser.add_argument("--load_weights", type=str, default="deadbeef") 
     # only if continuing to train on existing weights - if just testing use --test_only
     # also this will automatically save the weights back as well
-    parser.add_argument("--save_weights", action="store_true")
+    parser.add_argument("--save_weights", type=str, default="deafbeef")
     parser.add_argument("--bert", action="store_true")
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
@@ -38,13 +38,20 @@ class GPTClassifier(tf.keras.Model):
         self.seq_model = tf.keras.Sequential([
             tf.keras.layers.Dense(512),
             tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(256),
             tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
+            # tf.keras.layers.Dense(128),
+            # tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(50),
             tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(2),
             tf.keras.layers.Activation('sigmoid')
         ])
+
 
     def call(self, inputs):
         outputs = self.seq_model(inputs)
@@ -134,9 +141,13 @@ def main(args):
 
     if not args.test_gui:
         # load or create new model
-        if args.load_weights:
-            print("path: ", os.path.join(weights_dir, last_checkpoint_fname))
-            model = tf.keras.models.load_model(os.path.join(weights_dir, last_checkpoint_fname))
+        if args.load_weights != "deadbeef":
+            if args.load_weights == "":
+                model_load_name = last_checkpoint_fname
+            else:
+                model_load_name = args.load_weights
+            print("path: ", os.path.join(weights_dir, model_load_name))
+            model = tf.keras.models.load_model(os.path.join(weights_dir, model_load_name))
         else:
             model = GPTClassifier()
         # *** train model ***
@@ -144,12 +155,20 @@ def main(args):
             total_loss = train(model, train_abstract, train_labels, args)
             print("Epoch", i, ": total_loss = ", total_loss)
         # save model if necessary
-        if args.save_weights or args.load_weights:
+        if args.save_weights != "deadbeef" or args.load_weights != "deadbeef":
             # update the number of the latest training checkpoint
             with open(track_checkpoint_fname, 'w') as f:
                 f.write(str(last_checkpoint + 1))
-            model.save(os.path.join(weights_dir, f"model{last_checkpoint + 1}"))
-            print("Saved new weights")
+            if args.save_weights == "" or args.load_weights == "":
+                model_save_name = f"model{last_checkpoint + 1}"
+            elif args.save_weights != "deadbeef":
+                model_save_name = args.save_weights
+            elif args.load_weights != "deadbeef":
+                model_save_name = args.load_weights + "-1"
+            else:
+                model_save_name = f"model{last_checkpoint + 1}"
+            model.save(os.path.join(weights_dir, model_save_name))
+            print("Saved new weights in", model_save_name)
         # test model
         accuracy = test(model, test_abstracts, test_labels, args)
         print("Testing accuracy: ", accuracy)
