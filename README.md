@@ -17,6 +17,8 @@ welcome to our DL final project :)
 
 <br>
 
+2. `conda activate csci1470` (if it's not already activated)
+
 2. Make sure `generate.py` has the correct starting index, number of requests, and number of threads set
 
 3. `cd` into the `batch-scripts` directory  
@@ -43,15 +45,25 @@ Then, move the `combined.csv` file to the `data/partials` directory (and conside
 <details>
   <summary>Notes for setting up the first time</summary>
   
-  The first time you do this, you must clone this repo and install all necessary packages etc. I tihnk the easiest way to do this is by creating the same `csci1470` conda environment we used for all the HWs by following HW0, since it has most of the packages we need except for openai. Once you do this and have activated the environment, install openai:  
+  The first time you do this, you must clone this repo and install all necessary packages etc. I tihnk the easiest way to do this is by creating the same `csci1470` conda environment we used for all the HWs by following HW0, since it has most of the packages we need except for the two below. Once you do this and have activated the environment, install these packages:  
     `conda install -c conda-forge openai`  
-    I also had to install libstdcxx-ng to train:  
-    `conda install -c anaconda libstdcxx-ng`
+    
 </details>
 
 <br>
 
+2. `conda activate csci1470` (if it's not already activated)
 
+3. `cd` into the `batch_scripts` directory and make sure `train_sbatch.sh` contains the right command (ie has all the right argument flags) and make sure the output file is named to be what you want
 
+4. Might have to `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/users/mregan6/.conda/envs/csci1470/lib`
+
+4. Run `sbatch train_sbatch.sh`  
+This will return a batch job number, the output of this job will be saved in the `batch-scripts` directory in a file named `slurm-<job number>.out`
+
+# Data
+Total: 78158 (39079 each human & chatgpt)  
+Train: 62599  
+ Test: 15559  
 
 

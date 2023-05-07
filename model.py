@@ -1,13 +1,14 @@
 from preprocess import get_data
-from transformers import AutoTokenizer, TFDistilBertModel, TFBertModel
+from transformers import AutoTokenizer, TFDistilBertModel, DistilBertConfig, TFBertModel, BertConfig
 import tensorflow as tf
 import numpy as np
 import math
 import argparse
 import os
 
-track_checkpoint_fname = 'track_checkpoint.txt'
-weights_dir = "model_checkpts"
+script_dir = os.path.dirname(__file__)
+track_checkpoint_fname = os.path.join(script_dir, 'track_checkpoint.txt')
+weights_dir = os.path.join(script_dir,"model_checkpts")
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -50,6 +51,7 @@ class GPTClassifier(tf.keras.Model):
         return outputs
 
 def train(model, train_abstracts, train_labels, args):
+    print("training")
     batch_size = args.batch_size
     num_batches = math.floor(train_abstracts.shape[0] / batch_size)
     indices = tf.random.shuffle(tf.range(train_abstracts.shape[0]-1))
@@ -59,10 +61,10 @@ def train(model, train_abstracts, train_labels, args):
     train_labels = train_labels[:batch_size*num_batches]
     if args.bert:
         tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-        bert_model = TFBertModel.from_pretrained("bert-base-uncased")
+        bert_model = TFBertModel.from_pretrained("bert-base-uncased", BertConfig(max_position_embeddings=args.max_num_tokens))
     else:
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-        bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
+        bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
     # train_abstracts_list = train_abstracts.numpy().tolist()
     # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
     # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
@@ -118,9 +120,12 @@ def test_one(model, test_abstract, args):
     return output # index that should have the higher value: 0 if human, 1 if chatgpt
 
 def main(args):
+    print("main function started")
     # load data
     train_abstract, train_labels, test_abstracts, test_labels = get_data('data/train.csv', 'data/test.csv')
     print("Data loaded")
+    print("train_labels.shape:", train_labels.shape)
+    print("test_labels.shape:", test_labels.shape)
 
     # read what number the last training run was (this is unnecessary if we're not testing or saving/loading weights)
     with open(track_checkpoint_fname, 'r') as f:
