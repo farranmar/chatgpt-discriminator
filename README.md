@@ -62,8 +62,8 @@ Then, move the `combined.csv` file to the `data/partials` directory (and conside
 This will return a batch job number, the output of this job will be saved in the `batch-scripts` directory in a file named `slurm-<job number>.out`
 
 # Data
-Total: 78158 (39079 each human & chatgpt)  
-Train: 62599  
+Total: 78156 (39078 each human & chatgpt)  
+Train: 62597  
  Test: 15559  
 
 
