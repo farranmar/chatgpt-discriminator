@@ -5,4 +5,4 @@
 #SBATCH -t 48:00:00
 #SBATCH -o slurm-%j.out
 
-python ../model.py --save_weights "" --num_epochs 10
+python -u ../model.py --save_weights "" --num_epochs 10
