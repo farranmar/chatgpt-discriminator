@@ -37,14 +37,14 @@ class GPTClassifier(tf.keras.Model):
         self.optimizer = tf.keras.optimizers.Adam()
         self.loss = tf.keras.losses.BinaryCrossentropy()
         self.seq_model = tf.keras.Sequential([
-            tf.keras.layers.Dense(512),
-            tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dense(512),
+            # tf.keras.layers.LeakyReLU(),
             # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(256),
             tf.keras.layers.LeakyReLU(),
             # tf.keras.layers.Dropout(0.2),
-            # tf.keras.layers.Dense(128),
-            # tf.keras.layers.LeakyReLU(),
+            tf.keras.layers.Dense(128),
+            tf.keras.layers.LeakyReLU(),
             # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(50),
             tf.keras.layers.LeakyReLU(),
