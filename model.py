@@ -24,6 +24,7 @@ def parseArguments():
     # if this is selected, will automatically load weights and start single-test interface
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--percent_data", type=float, default=1)
     # will probably need more than 10 epochs in final training
     parser.add_argument("--max_num_tokens", type=int, default=512)
     # maximum number of tokens considered in each input abstract (for both training & testing)
@@ -133,6 +134,14 @@ def main(args):
     train_path = os.path.join(script_dir, "data/from_titles/train.csv")
     test_path = os.path.join(script_dir, "data/from_titles/test.csv")
     train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
+
+    num_train = math.floor(train_labels.shape[0]*args.percent_data)
+    train_abstract = train_abstract[:num_train]
+    train_labels = train_labels[:num_train]
+    num_test = math.floor(test_labels.shape[0]*args.percent_data)
+    test_abstracts = test_abstracts[:num_test]
+    test_labels = test_labels[:num_test]
+
     print("Data loaded")
     print("train_labels.shape:", train_labels.shape)
     print("test_labels.shape:", test_labels.shape)
