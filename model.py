@@ -130,8 +130,8 @@ def main(args):
     print("main function started")
     # load data
     script_dir = os.path.dirname(__file__)
-    train_path = os.path.join(script_dir, "data/train.csv")
-    test_path = os.path.join(script_dir, "data/test.csv")
+    train_path = os.path.join(script_dir, "data/from_titles/train.csv")
+    test_path = os.path.join(script_dir, "data/from_titles/test.csv")
     train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
     print("Data loaded")
     print("train_labels.shape:", train_labels.shape)
