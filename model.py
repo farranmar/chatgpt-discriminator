@@ -18,12 +18,14 @@ def parseArguments():
     # also this will automatically save the weights back as well
     parser.add_argument("--save_weights", type=str, default="deafbeef")
     parser.add_argument("--bert", action="store_true")
+    parser.add_argument("--test", type=str, default="deadbeef") 
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
     parser.add_argument("--test_gui", action="store_true")
     # if this is selected, will automatically load weights and start single-test interface
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--percent_data", type=float, default=1)
     # will probably need more than 10 epochs in final training
     parser.add_argument("--max_num_tokens", type=int, default=512)
     # maximum number of tokens considered in each input abstract (for both training & testing)
@@ -130,9 +132,17 @@ def main(args):
     print("main function started")
     # load data
     script_dir = os.path.dirname(__file__)
-    train_path = os.path.join(script_dir, "data/train.csv")
-    test_path = os.path.join(script_dir, "data/test.csv")
+    train_path = os.path.join(script_dir, "data/from_titles/train.csv")
+    test_path = os.path.join(script_dir, "data/from_titles/test.csv")
     train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
+
+    num_train = math.floor(train_labels.shape[0]*args.percent_data)
+    train_abstract = train_abstract[:num_train]
+    train_labels = train_labels[:num_train]
+    num_test = math.floor(test_labels.shape[0]*args.percent_data)
+    test_abstracts = test_abstracts[:num_test]
+    test_labels = test_labels[:num_test]
+
     print("Data loaded")
     print("train_labels.shape:", train_labels.shape)
     print("test_labels.shape:", test_labels.shape)
@@ -142,6 +152,10 @@ def main(args):
         last_checkpoint = int(f.read().strip())
     last_checkpoint_fname = f"model{last_checkpoint}"
 
+    if args.test != "deadbeef":
+        model = tf.keras.models.load_model(os.path.join(weights_dir, args.test))
+        accuracy = test(model, test_abstracts, test_labels, args)
+        print("Testing accuracy: ", accuracy)
     if not args.test_gui:
         # load or create new model
         if args.load_weights != "deadbeef":
