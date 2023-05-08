@@ -82,7 +82,7 @@ def main():
     # write_path = os.path.join(script_dir, rel_write_path)
 
     start = 1
-    num_requests = 10
+    num_requests = 1000
     num_threads = 8
     num_requests_per_thread = math.floor(num_requests / num_threads)
     threads = []
