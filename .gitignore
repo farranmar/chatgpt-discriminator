@@ -1,0 +1,3 @@
+data/partials/*
+model_checkpts/*
+batch-scripts/slurm-*

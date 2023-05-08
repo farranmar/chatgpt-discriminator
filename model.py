@@ -1,20 +1,23 @@
 from preprocess import get_data
-from transformers import AutoTokenizer, TFDistilBertModel
+from transformers import AutoTokenizer, TFDistilBertModel, DistilBertConfig, TFBertModel, BertConfig
 import tensorflow as tf
+import numpy as np
 import math
 import argparse
 import os
 
-track_checkpoint_fname = 'track_checkpoint.txt'
-weights_dir = "model_checkpts"
+script_dir = os.path.dirname(__file__)
+track_checkpoint_fname = os.path.join(script_dir, 'track_checkpoint.txt')
+weights_dir = os.path.join(script_dir,"model_checkpts")
 
 def parseArguments():
     parser = argparse.ArgumentParser()
     ### ONLY USE ONE OF (--load_weights, --save_weights, --test_gui) ###
-    parser.add_argument("--load_weights", action="store_true") 
+    parser.add_argument("--load_weights", type=str, default="deadbeef") 
     # only if continuing to train on existing weights - if just testing use --test_only
     # also this will automatically save the weights back as well
-    parser.add_argument("--save_weights", action="store_true")
+    parser.add_argument("--save_weights", type=str, default="deafbeef")
+    parser.add_argument("--bert", action="store_true")
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
     parser.add_argument("--test_gui", action="store_true")
@@ -35,30 +38,40 @@ class GPTClassifier(tf.keras.Model):
         self.seq_model = tf.keras.Sequential([
             tf.keras.layers.Dense(512),
             tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(256),
             tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
+            # tf.keras.layers.Dense(128),
+            # tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(50),
             tf.keras.layers.LeakyReLU(),
+            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(2),
             tf.keras.layers.Activation('sigmoid')
         ])
 
+
     def call(self, inputs):
         outputs = self.seq_model(inputs)
-        print("putputs shape", outputs.shape)
         return outputs
 
 def train(model, train_abstracts, train_labels, args):
     print("training")
     batch_size = args.batch_size
     num_batches = math.floor(train_abstracts.shape[0] / batch_size)
-    indices = tf.random.shuffle(tf.range(train_abstracts.shape[0]))
+    indices = tf.random.shuffle(tf.range(train_abstracts.shape[0]-1))
     train_abstracts = tf.gather(train_abstracts, indices)
     train_labels = tf.gather(train_labels, indices)
     train_abstracts = train_abstracts[:batch_size*num_batches]
     train_labels = train_labels[:batch_size*num_batches]
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
+    if args.bert:
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        bert_model = TFBertModel.from_pretrained("bert-base-uncased", BertConfig(max_position_embeddings=args.max_num_tokens))
+    else:
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+        bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
     # train_abstracts_list = train_abstracts.numpy().tolist()
     # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
     # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
@@ -67,18 +80,15 @@ def train(model, train_abstracts, train_labels, args):
     for i in range(num_batches):
         batch_abstracts = train_abstracts[i * batch_size:(i+1)*batch_size]
         batch_labels = train_labels[i * batch_size:(i+1)*batch_size]
-        print("batch abstract data type is", batch_abstracts.dtype)
         batch_abstracts_list = batch_abstracts.numpy().tolist()
         batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
         tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
                                         padding='max_length', truncation=True) # default max_length 512
-        hidden_states = distil_bert(tokenized_abstracts).last_hidden_state
+        hidden_states = bert_model(tokenized_abstracts).last_hidden_state
         hidden_states = tf.reshape(hidden_states, (batch_size, -1))
 
         with tf.GradientTape() as tape:
             outputs = model(hidden_states)
-            print("outputs", outputs.dtype)
-            print("batch_lbables", batch_labels.dtype)
             loss = model.loss(outputs, batch_labels)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -94,7 +104,7 @@ def test(model, test_abstracts, test_labels, args):
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
     test_abstracts_list = test_abstracts.numpy().tolist()
-    test_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_lits]
+    test_abstracts_list = [s.decode('utf-8') for s in test_abstracts_list]
     tokenized_abstracts = tokenizer(test_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
                                     padding='max_length', truncation=True) # default max_length 512
     hidden_states = distil_bert(tokenized_abstracts).last_hidden_state
@@ -117,9 +127,15 @@ def test_one(model, test_abstract, args):
     return output # index that should have the higher value: 0 if human, 1 if chatgpt
 
 def main(args):
+    print("main function started")
     # load data
-    train_abstract, train_labels, test_abstracts, test_labels = get_data('data/train.csv', 'data/test.csv')
+    script_dir = os.path.dirname(__file__)
+    train_path = os.path.join(script_dir, "data/train.csv")
+    test_path = os.path.join(script_dir, "data/test.csv")
+    train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
     print("Data loaded")
+    print("train_labels.shape:", train_labels.shape)
+    print("test_labels.shape:", test_labels.shape)
 
     # read what number the last training run was (this is unnecessary if we're not testing or saving/loading weights)
     with open(track_checkpoint_fname, 'r') as f:
@@ -128,8 +144,13 @@ def main(args):
 
     if not args.test_gui:
         # load or create new model
-        if args.load_weights:
-            model = tf.keras.models.load_model(os.path.join(weights_dir, last_checkpoint_fname))
+        if args.load_weights != "deadbeef":
+            if args.load_weights == "":
+                model_load_name = last_checkpoint_fname
+            else:
+                model_load_name = args.load_weights
+            print("path: ", os.path.join(weights_dir, model_load_name))
+            model = tf.keras.models.load_model(os.path.join(weights_dir, model_load_name))
         else:
             model = GPTClassifier()
         # *** train model ***
@@ -137,12 +158,20 @@ def main(args):
             total_loss = train(model, train_abstract, train_labels, args)
             print("Epoch", i, ": total_loss = ", total_loss)
         # save model if necessary
-        if args.save_weights or args.load_weights:
+        if args.save_weights != "deadbeef" or args.load_weights != "deadbeef":
             # update the number of the latest training checkpoint
             with open(track_checkpoint_fname, 'w') as f:
                 f.write(str(last_checkpoint + 1))
-            model.save(os.path.join(weights_dir, f"model{last_checkpoint + 1}"))
-            print("Saved new weights")
+            if args.save_weights == "" or args.load_weights == "":
+                model_save_name = f"model{last_checkpoint + 1}"
+            elif args.save_weights != "deadbeef":
+                model_save_name = args.save_weights
+            elif args.load_weights != "deadbeef":
+                model_save_name = args.load_weights + "-1"
+            else:
+                model_save_name = f"model{last_checkpoint + 1}"
+            model.save(os.path.join(weights_dir, model_save_name))
+            print("Saved new weights in", model_save_name)
         # test model
         accuracy = test(model, test_abstracts, test_labels, args)
         print("Testing accuracy: ", accuracy)
@@ -152,7 +181,7 @@ def main(args):
         test_abstract = input("Paste an abstract here: ").strip()
         model = tf.keras.models.load_model(os.path.join(weights_dir, last_checkpoint_fname))
         guess = test_one(model, test_abstract, args)
-        print(f"This is probably written by {('a human', 'chatgpt')[tf.argmax(guess)]} with probabilities (human, chatgpt) = {tf.nn.softmax(guess)}")
+        print(f"This is probably written by {np.array(['a human', 'chatgpt'])[tf.math.argmax(guess[0])]} with probabilities [human, chatgpt] = {tf.nn.softmax(guess[0])}")
 
 if __name__ == "__main__":
     args = parseArguments()
