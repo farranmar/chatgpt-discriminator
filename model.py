@@ -18,6 +18,7 @@ def parseArguments():
     # also this will automatically save the weights back as well
     parser.add_argument("--save_weights", type=str, default="deafbeef")
     parser.add_argument("--bert", action="store_true")
+    parser.add_argument("--test", type=str, default="deadbeef") 
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
     parser.add_argument("--test_gui", action="store_true")
@@ -151,6 +152,10 @@ def main(args):
         last_checkpoint = int(f.read().strip())
     last_checkpoint_fname = f"model{last_checkpoint}"
 
+    if args.test != "deadbeef":
+        model = tf.keras.models.load_model(os.path.join(weights_dir, args.test))
+        accuracy = test(model, test_abstracts, test_labels, args)
+        print("Testing accuracy: ", accuracy)
     if not args.test_gui:
         # load or create new model
         if args.load_weights != "deadbeef":
