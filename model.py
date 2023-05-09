@@ -140,14 +140,14 @@ def test(model, test_abstracts, test_labels, args):
     return metric.result().numpy() # return accuracy on training data
 
 def test_one(model, test_abstract, args):
-    # tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    # distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
-    # # don't need to decode abstract as utf-8 because if it's input from the user it shouldn't be a bytestring
-    # tokenized_abstract = tokenizer([test_abstract], return_tensors='tf', max_length=args.max_num_tokens, \
-    #                                padding='max_length', truncation=True) # default max_length 512
-    # hidden_states = distil_bert(tokenized_abstract).last_hidden_state
-    # hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
-    # output = model(hidden_states)
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
+    # don't need to decode abstract as utf-8 because if it's input from the user it shouldn't be a bytestring
+    tokenized_abstract = tokenizer([test_abstract], return_tensors='tf', max_length=args.max_num_tokens, \
+                                   padding='max_length', truncation=True) # default max_length 512
+    hidden_states = distil_bert(tokenized_abstract).last_hidden_state
+    hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
+    output = model(hidden_states)
     output = model(tf.convert_to_tensor([test_abstract]))
     return output # index that should have the higher value: 0 if human, 1 if chatgpt
 
@@ -211,9 +211,8 @@ def main(args):
     else:
         # run simple gui interface so you can try it yourself!
         # TODO: make the interface nice with tkinter
-        model = CombinedModel("model2", args)
         test_abstract = input("Paste an abstract here: ").strip()
-        # model = tf.keras.models.load_model(os.path.join(weights_dir, last_checkpoint_fname))
+        model = tf.keras.models.load_model(os.path.join(weights_dir, last_checkpoint_fname))
         guess = test_one(model, test_abstract, args)
         print(f"This is probably written by {np.array(['a human', 'chatgpt'])[tf.math.argmax(guess[0])]} with probabilities [human, chatgpt] = {tf.nn.softmax(guess[0])}")
 
