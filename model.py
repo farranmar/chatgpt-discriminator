@@ -148,7 +148,6 @@ def test_one(model, test_abstract, args):
     hidden_states = distil_bert(tokenized_abstract).last_hidden_state
     hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
     output = model(hidden_states)
-    output = model(tf.convert_to_tensor([test_abstract]))
     return output # index that should have the higher value: 0 if human, 1 if chatgpt
 
 def main(args):
