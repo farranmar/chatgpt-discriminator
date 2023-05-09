@@ -41,6 +41,10 @@ def generate(start, stop, read_path, write_path, mode):
                     print("human abstract too long (", len(human_abstract), " characters), skipping")
                     total_skipped += 1
                     continue
+                if len(human_abstract) < 200: 
+                    print("human abstract too short (", len(human_abstract), " characters), skipping")
+                    total_skipped += 1
+                    continue
                 success = False
                 try:
                     chatgpt_abstract = completion_with_backoff(abstract_title)
@@ -52,6 +56,10 @@ def generate(start, stop, read_path, write_path, mode):
                 chatgpt_abstract = chatgpt_abstract.replace("\n", " ")
                 if len(chatgpt_abstract) > 2500:
                     print("chatgpt abstract too long (", len(chatgpt_abstract), " characters), skipping")
+                    total_skipped += 1
+                    continue
+                if len(chatgpt_abstract) < 200: 
+                    print("chatgpt abstract too short (", len(chatgpt_abstract), " characters), skipping")
                     total_skipped += 1
                     continue
                 if human_abstract == chatgpt_abstract: 
@@ -81,8 +89,8 @@ def main():
     read_path = os.path.join(script_dir, rel_read_path)
     # write_path = os.path.join(script_dir, rel_write_path)
 
-    start = 1001
-    num_requests = 38000
+    start = 17655
+    num_requests = 22000
     num_threads = 8
     num_requests_per_thread = math.floor(num_requests / num_threads)
     threads = []
