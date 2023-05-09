@@ -19,8 +19,6 @@ class Author(Enum):
 
 def parseArguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--api_key", type=str, default="")
-    args = parser.parse_args()
     return args
 
 @retry(wait=wait_random_exponential(min=5, max=60), stop=stop_after_attempt(10), reraise=True)
@@ -38,7 +36,6 @@ def completion_with_backoff(human_abstract):
 Reads inputs one by one from read_path, rephrases each row with ChatGPT, and writes the results to write_path
 If a human written or rephrased ChatGPT abstract is more then 2500 characters, then neither abstract is written
 If a rephrased ChatGPT abstract is identical to the original human one, then neither abstract is written
-
 start: index of the row to begin reading at (inclusive) in read_path csv file
 stop: index of the row to stop reading at (exclusive) in read_path csv file
 read_path: the path to the csv to read from, assumes each row has the columns 'terms', 'titles', 'abstracts' in that order
