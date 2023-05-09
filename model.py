@@ -17,7 +17,6 @@ def parseArguments():
     # only if continuing to train on existing weights - if just testing use --test_only
     # also this will automatically save the weights back as well
     parser.add_argument("--save_weights", type=str, default="deafbeef")
-    parser.add_argument("--percent_data", type=float, default=1)
     parser.add_argument("--bert", action="store_true")
     parser.add_argument("--test", type=str, default="deadbeef") 
     # can't select both --save_weights and --test_only, it'll just train and save the weights
