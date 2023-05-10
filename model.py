@@ -19,6 +19,7 @@ def parseArguments():
     parser.add_argument("--save_weights", type=str, default="deafbeef")
     parser.add_argument("--bert", action="store_true")
     parser.add_argument("--test", type=str, default="deadbeef") 
+    parser.add_argument("--from_titles", action="store_true") 
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
     parser.add_argument("--test_gui", action="store_true")
@@ -155,8 +156,12 @@ def main(args):
     print("main function started")
     # load data
     script_dir = os.path.dirname(__file__)
-    train_path = os.path.join(script_dir, "data/from_titles/train.csv")
-    test_path = os.path.join(script_dir, "data/from_titles/test.csv")
+    if args.from_title:
+        train_path = os.path.join(script_dir, "data/from_titles/train.csv")
+        test_path = os.path.join(script_dir, "data/from_titles/test.csv")
+    else:
+        train_path = os.path.join(script_dir, "data/rephrased/train.csv")
+        test_path = os.path.join(script_dir, "data/rephrased/test.csv")
     train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
 
     num_train = math.floor(train_labels.shape[0]*args.percent_data)
