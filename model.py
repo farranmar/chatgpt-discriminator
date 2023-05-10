@@ -156,7 +156,7 @@ def main(args):
     print("main function started")
     # load data
     script_dir = os.path.dirname(__file__)
-    if args.from_title:
+    if args.from_titles:
         train_path = os.path.join(script_dir, "data/from_titles/train.csv")
         test_path = os.path.join(script_dir, "data/from_titles/test.csv")
     else:
