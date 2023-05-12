@@ -17,9 +17,9 @@ def parseArguments():
     # only if continuing to train on existing weights - if just testing use --test_only
     # also this will automatically save the weights back as well
     parser.add_argument("--save_weights", type=str, default="deafbeef")
-    parser.add_argument("--percent_data", type=float, default=1)
     parser.add_argument("--bert", action="store_true")
     parser.add_argument("--test", type=str, default="deadbeef") 
+    parser.add_argument("--from_titles", action="store_true") 
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
     parser.add_argument("--test_gui", action="store_true")
@@ -41,45 +41,16 @@ class GPTClassifier(tf.keras.Model):
         self.seq_model = tf.keras.Sequential([
             tf.keras.layers.Dense(512),
             tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(256),
             tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
-            # tf.keras.layers.Dense(128),
-            # tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(50),
             tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(2),
             tf.keras.layers.Activation('sigmoid')
         ])
 
     def call(self, inputs):
         outputs = self.seq_model(inputs)
-        return outputs
-    
-# don't train this, it's just for shap
-# training a combined model took hella ram so this just combines two pretrained models instead
-class CombinedModel(tf.keras.Model):
-    def __init__(self, model_name, args):
-        super().__init__()
-        if args.bert:
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-            self.bert_model = TFBertModel.from_pretrained("bert-base-uncased", BertConfig(max_position_embeddings=args.max_num_tokens))
-        else:
-            self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-            self.bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
-        self.classifier = tf.keras.models.load_model(os.path.join(weights_dir, model_name))
-        self.max_num_tokens = args.max_num_tokens
-
-    def call(self, inputs):
-        inputs_list = inputs.numpy().tolist()
-        inputs_list = [s.decode('utf-8') for s in inputs_list]
-        tokenized_inputs = self.tokenizer(inputs_list, return_tensors='tf', max_length=self.max_num_tokens, padding='max_length', truncation=True)
-        hidden_states = self.bert_model(tokenized_inputs).last_hidden_state
-        hidden_states = tf.reshape(hidden_states, (len(inputs_list), -1))
-        outputs = self.classifier(hidden_states)
         return outputs
     
 
@@ -98,10 +69,7 @@ def train(model, train_abstracts, train_labels, args):
     else:
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
-    # train_abstracts_list = train_abstracts.numpy().tolist()
-    # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
-    # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
-    # print("tokenized abstracts", type(tokenized_abstracts))
+
     total_loss = 0
     for i in range(num_batches):
         batch_abstracts = train_abstracts[i * batch_size:(i+1)*batch_size]
@@ -109,12 +77,12 @@ def train(model, train_abstracts, train_labels, args):
         batch_abstracts_list = batch_abstracts.numpy().tolist()
         batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
         tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
-                                        padding='max_length', truncation=True) # default max_length 512
+                                        padding='max_length', truncation=True, return_attention_mask=True) # default max_length 512
         hidden_states = bert_model(tokenized_abstracts).last_hidden_state
-        hidden_states = tf.reshape(hidden_states, (batch_size, -1))
+        cls_token = hidden_states[:, 0, :]
 
         with tf.GradientTape() as tape:
-            outputs = model(hidden_states)
+            outputs = model(cls_token)
             loss = model.loss(outputs, batch_labels)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -127,37 +95,58 @@ def train(model, train_abstracts, train_labels, args):
 
 def test(model, test_abstracts, test_labels, args):
     print("testing")
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
-    test_abstracts_list = test_abstracts.numpy().tolist()
-    test_abstracts_list = [s.decode('utf-8') for s in test_abstracts_list]
-    tokenized_abstracts = tokenizer(test_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
-                                    padding='max_length', truncation=True) # default max_length 512
-    hidden_states = distil_bert(tokenized_abstracts).last_hidden_state
-    hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
-    outputs = model(hidden_states)
+    batch_size = args.batch_size
+    num_batches = math.floor(test_abstracts.shape[0] / batch_size)
+    test_abstracts = test_abstracts[:batch_size*num_batches]
+    test_labels = test_labels[:batch_size*num_batches]
+    if args.bert:
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        bert_model = TFBertModel.from_pretrained("bert-base-uncased", BertConfig(max_position_embeddings=args.max_num_tokens))
+    else:
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+        bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
+    total_acc = 0
+    for i in range(num_batches):
+        batch_abstracts = test_abstracts[i * batch_size:(i+1)*batch_size]
+        batch_labels = test_labels[i * batch_size:(i+1)*batch_size]
+        batch_abstracts_list = batch_abstracts.numpy().tolist()
+        batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
+        tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
+                                        padding='max_length', truncation=True, return_attention_mask=True) # default max_length 512
+        hidden_states = bert_model(tokenized_abstracts).last_hidden_state
+        cls_token = hidden_states[:, 0, :]
 
-    metric = tf.keras.metrics.CategoricalAccuracy()
-    metric.update_state(test_labels, outputs)
-    return metric.result().numpy() # return accuracy on training data
+        outputs = model(cls_token)
+        metric = tf.keras.metrics.CategoricalAccuracy()
+        metric.update_state(batch_labels, outputs)
+        acc = metric.result().numpy()
+        print("metric.result().numpy() type", type(acc))
+        print("acc", acc)
+        total_acc += metric.result().numpy()
+    return total_acc / num_batches
+
 
 def test_one(model, test_abstract, args):
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
     # don't need to decode abstract as utf-8 because if it's input from the user it shouldn't be a bytestring
     tokenized_abstract = tokenizer([test_abstract], return_tensors='tf', max_length=args.max_num_tokens, \
-                                   padding='max_length', truncation=True) # default max_length 512
+                                   padding='max_length', truncation=True, return_attention_mask=True) # default max_length 512
     hidden_states = distil_bert(tokenized_abstract).last_hidden_state
-    hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
-    output = model(hidden_states)
+    cls_token = hidden_states[:, 0, :]
+    output = model(cls_token)
     return output # index that should have the higher value: 0 if human, 1 if chatgpt
 
 def main(args):
     print("main function started")
     # load data
     script_dir = os.path.dirname(__file__)
-    train_path = os.path.join(script_dir, "data/from_titles/train.csv")
-    test_path = os.path.join(script_dir, "data/from_titles/test.csv")
+    if args.from_titles:
+        train_path = os.path.join(script_dir, "data/from_titles/train.csv")
+        test_path = os.path.join(script_dir, "data/from_titles/test.csv")
+    else:
+        train_path = os.path.join(script_dir, "data/rephrased/train.csv")
+        test_path = os.path.join(script_dir, "data/rephrased/test.csv")
     train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
 
     num_train = math.floor(train_labels.shape[0]*args.percent_data)
