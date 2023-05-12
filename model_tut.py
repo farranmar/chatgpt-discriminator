@@ -150,25 +150,25 @@ def train(model, bert_model, train_ids, train_attn, train_labels, args):
     )
 
     # finetune
-    if(bert_model != None):
-        # Unfreeze distilBERT layers and make available for training
-        for layer in bert_model.layers:
-            layer.trainable = True
+    # if(bert_model != None):
+    #     # Unfreeze distilBERT layers and make available for training
+    #     for layer in bert_model.layers:
+    #         layer.trainable = True
 
-        # Recompile model after unfreezing
-        model.compile(optimizer=tf.keras.optimizers.Adam(0.0001), 
-                loss=tf.keras.losses.BinaryCrossentropy(),
-                metrics=['accuracy'])
+    #     # Recompile model after unfreezing
+    #     model.compile(optimizer=tf.keras.optimizers.Adam(0.0001), 
+    #             loss=tf.keras.losses.BinaryCrossentropy(),
+    #             metrics=['accuracy'])
 
-        # Train the model
-        train_history2 = model.fit(
-            x = [train_ids, train_attn],
-            y = train_labels.numpy(),
-            epochs = args.num_ft_epochs,
-            batch_size = args.batch_size,
-            validation_split=args.validation_split,
-            verbose=2
-        )
+    #     # Train the model
+    #     train_history2 = model.fit(
+    #         x = [train_ids, train_attn],
+    #         y = train_labels.numpy(),
+    #         epochs = args.num_ft_epochs,
+    #         batch_size = args.batch_size,
+    #         validation_split=args.validation_split,
+    #         verbose=2
+    #     )
 
 def test(model, test_abstracts, test_labels, args):
     print("testing")
