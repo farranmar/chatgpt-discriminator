@@ -41,49 +41,16 @@ class GPTClassifier(tf.keras.Model):
         self.seq_model = tf.keras.Sequential([
             tf.keras.layers.Dense(512),
             tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(256),
             tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
-            # tf.keras.layers.Dense(128),
-            # tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(50),
             tf.keras.layers.LeakyReLU(),
-            # tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(2),
             tf.keras.layers.Activation('sigmoid')
         ])
 
     def call(self, inputs):
         outputs = self.seq_model(inputs)
-        return outputs
-    
-# don't train this, it's just for shap
-# training a combined model took hella ram so this just combines two pretrained models instead
-class CombinedModel(tf.keras.Model):
-    def __init__(self, model_name, args):
-        super().__init__()
-        if args.bert:
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-            self.bert_model = TFBertModel.from_pretrained("bert-base-uncased", BertConfig(max_position_embeddings=args.max_num_tokens))
-        else:
-            self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-            self.bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
-        self.classifier = tf.keras.models.load_model(os.path.join(weights_dir, model_name))
-        for layer in self.bert_model.layers:
-            layer.trainable = False
-        for layer in self.classifier.layers:
-            layer.trainable = False
-        self.max_num_tokens = args.max_num_tokens
-
-    def call(self, inputs):
-        inputs_list = np.array(inputs).tolist()
-        inputs_list = [s.decode('utf-8') for s in inputs_list]
-        tokenized_inputs = self.tokenizer(inputs_list, return_tensors='tf', max_length=self.max_num_tokens, padding='max_length', truncation=True, return_attention_mask=True)
-        hidden_states = self.bert_model(tokenized_inputs).last_hidden_state
-        cls_token = hidden_states[:, 0, :]
-        outputs = self.classifier(cls_token)
         return outputs
     
 
@@ -102,10 +69,7 @@ def train(model, train_abstracts, train_labels, args):
     else:
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
-    # train_abstracts_list = train_abstracts.numpy().tolist()
-    # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
-    # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
-    # print("tokenized abstracts", type(tokenized_abstracts))
+
     total_loss = 0
     for i in range(num_batches):
         batch_abstracts = train_abstracts[i * batch_size:(i+1)*batch_size]
