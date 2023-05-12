@@ -141,10 +141,6 @@ def test(model, test_abstracts, test_labels, args):
     else:
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
         bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
-    # train_abstracts_list = train_abstracts.numpy().tolist()
-    # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
-    # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
-    # print("tokenized abstracts", type(tokenized_abstracts))
     total_acc = 0
     for i in range(num_batches):
         batch_abstracts = test_abstracts[i * batch_size:(i+1)*batch_size]
@@ -158,7 +154,7 @@ def test(model, test_abstracts, test_labels, args):
 
         outputs = model(hidden_states)
         metric = tf.keras.metrics.CategoricalAccuracy()
-        metric.update_state(test_labels, outputs)
+        metric.update_state(batch_labels, outputs)
         acc = metric.result().numpy()
         print("metric.result().numpy() type", type(acc))
         print("acc", acc)
