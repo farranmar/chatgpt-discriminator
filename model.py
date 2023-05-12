@@ -71,10 +71,14 @@ class CombinedModel(tf.keras.Model):
             self.tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
             self.bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
         self.classifier = tf.keras.models.load_model(os.path.join(weights_dir, model_name))
+        for layer in self.bert_model.layers:
+            layer.trainable = False
+        for layer in self.classifier.layers:
+            layer.trainable = False
         self.max_num_tokens = args.max_num_tokens
 
     def call(self, inputs):
-        inputs_list = inputs.numpy().tolist()
+        inputs_list = np.array(inputs).tolist()
         inputs_list = [s.decode('utf-8') for s in inputs_list]
         tokenized_inputs = self.tokenizer(inputs_list, return_tensors='tf', max_length=self.max_num_tokens, padding='max_length', truncation=True)
         hidden_states = self.bert_model(tokenized_inputs).last_hidden_state
@@ -127,19 +131,40 @@ def train(model, train_abstracts, train_labels, args):
 
 def test(model, test_abstracts, test_labels, args):
     print("testing")
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
-    test_abstracts_list = test_abstracts.numpy().tolist()
-    test_abstracts_list = [s.decode('utf-8') for s in test_abstracts_list]
-    tokenized_abstracts = tokenizer(test_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
-                                    padding='max_length', truncation=True) # default max_length 512
-    hidden_states = distil_bert(tokenized_abstracts).last_hidden_state
-    hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
-    outputs = model(hidden_states)
+    batch_size = args.batch_size
+    num_batches = math.floor(test_abstracts.shape[0] / batch_size)
+    test_abstracts = test_abstracts[:batch_size*num_batches]
+    test_labels = test_labels[:batch_size*num_batches]
+    if args.bert:
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        bert_model = TFBertModel.from_pretrained("bert-base-uncased", BertConfig(max_position_embeddings=args.max_num_tokens))
+    else:
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+        bert_model = TFDistilBertModel.from_pretrained("distilbert-base-uncased", DistilBertConfig(max_position_embeddings=args.max_num_tokens))
+    # train_abstracts_list = train_abstracts.numpy().tolist()
+    # train_abstracts_list = [s.decode('utf-8') for s in train_abstracts_list]
+    # tokenized_abstracts = tokenizer(train_abstracts_list, return_tensors='tf', max_length=512, padding='max_length', truncation=True)
+    # print("tokenized abstracts", type(tokenized_abstracts))
+    total_acc = 0
+    for i in range(num_batches):
+        batch_abstracts = test_abstracts[i * batch_size:(i+1)*batch_size]
+        batch_labels = test_labels[i * batch_size:(i+1)*batch_size]
+        batch_abstracts_list = batch_abstracts.numpy().tolist()
+        batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
+        tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
+                                        padding='max_length', truncation=True) # default max_length 512
+        hidden_states = bert_model(tokenized_abstracts).last_hidden_state
+        hidden_states = tf.reshape(hidden_states, (batch_size, -1))
 
-    metric = tf.keras.metrics.CategoricalAccuracy()
-    metric.update_state(test_labels, outputs)
-    return metric.result().numpy() # return accuracy on training data
+        outputs = model(hidden_states)
+        metric = tf.keras.metrics.CategoricalAccuracy()
+        metric.update_state(test_labels, outputs)
+        acc = metric.result().numpy()
+        print("metric.result().numpy() type", type(acc))
+        print("acc", acc)
+        total_acc += metric.result().numpy()
+    return total_acc / num_batches
+
 
 def test_one(model, test_abstract, args):
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
