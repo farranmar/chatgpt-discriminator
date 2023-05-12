@@ -80,10 +80,10 @@ class CombinedModel(tf.keras.Model):
     def call(self, inputs):
         inputs_list = np.array(inputs).tolist()
         inputs_list = [s.decode('utf-8') for s in inputs_list]
-        tokenized_inputs = self.tokenizer(inputs_list, return_tensors='tf', max_length=self.max_num_tokens, padding='max_length', truncation=True)
+        tokenized_inputs = self.tokenizer(inputs_list, return_tensors='tf', max_length=self.max_num_tokens, padding='max_length', truncation=True, return_attention_mask=True)
         hidden_states = self.bert_model(tokenized_inputs).last_hidden_state
-        hidden_states = tf.reshape(hidden_states, (len(inputs_list), -1))
-        outputs = self.classifier(hidden_states)
+        cls_token = hidden_states[:, 0, :]
+        outputs = self.classifier(cls_token)
         return outputs
     
 
@@ -113,12 +113,12 @@ def train(model, train_abstracts, train_labels, args):
         batch_abstracts_list = batch_abstracts.numpy().tolist()
         batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
         tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
-                                        padding='max_length', truncation=True) # default max_length 512
+                                        padding='max_length', truncation=True, return_attention_mask=True) # default max_length 512
         hidden_states = bert_model(tokenized_abstracts).last_hidden_state
-        hidden_states = tf.reshape(hidden_states, (batch_size, -1))
+        cls_token = hidden_states[:, 0, :]
 
         with tf.GradientTape() as tape:
-            outputs = model(hidden_states)
+            outputs = model(cls_token)
             loss = model.loss(outputs, batch_labels)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -148,11 +148,11 @@ def test(model, test_abstracts, test_labels, args):
         batch_abstracts_list = batch_abstracts.numpy().tolist()
         batch_abstracts_list = [s.decode('utf-8') for s in batch_abstracts_list]
         tokenized_abstracts = tokenizer(batch_abstracts_list, return_tensors='tf', max_length=args.max_num_tokens, \
-                                        padding='max_length', truncation=True) # default max_length 512
+                                        padding='max_length', truncation=True, return_attention_mask=True) # default max_length 512
         hidden_states = bert_model(tokenized_abstracts).last_hidden_state
-        hidden_states = tf.reshape(hidden_states, (batch_size, -1))
+        cls_token = hidden_states[:, 0, :]
 
-        outputs = model(hidden_states)
+        outputs = model(cls_token)
         metric = tf.keras.metrics.CategoricalAccuracy()
         metric.update_state(batch_labels, outputs)
         acc = metric.result().numpy()
@@ -167,10 +167,10 @@ def test_one(model, test_abstract, args):
     distil_bert = TFDistilBertModel.from_pretrained("distilbert-base-uncased")
     # don't need to decode abstract as utf-8 because if it's input from the user it shouldn't be a bytestring
     tokenized_abstract = tokenizer([test_abstract], return_tensors='tf', max_length=args.max_num_tokens, \
-                                   padding='max_length', truncation=True) # default max_length 512
+                                   padding='max_length', truncation=True, return_attention_mask=True) # default max_length 512
     hidden_states = distil_bert(tokenized_abstract).last_hidden_state
-    hidden_states = tf.reshape(hidden_states, (hidden_states.shape[0], -1))
-    output = model(hidden_states)
+    cls_token = hidden_states[:, 0, :]
+    output = model(cls_token)
     return output # index that should have the higher value: 0 if human, 1 if chatgpt
 
 def main(args):

@@ -1,3 +1,6 @@
+# This code was written by following Ray William's tutorial on finetuning distilBERT for binary classification:
+# https://towardsdatascience.com/hugging-face-transformers-fine-tuning-distilbert-for-binary-classification-tasks-490f1d192379
+
 from preprocess import get_data
 from transformers import AutoTokenizer, TFDistilBertModel, DistilBertConfig, TFBertModel, BertConfig
 import tensorflow as tf
