@@ -1,0 +1,9 @@
+name: chatgpt-discriminator
+
+dependencies:
+  - python=3.10
+  - pip
+  - transformers
+  - numpy
+  - pip:
+      - tensorflow==2.11
