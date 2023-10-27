@@ -14,15 +14,15 @@ def parseArguments():
     parser = argparse.ArgumentParser()
     ### ONLY USE ONE OF (--load_weights, --save_weights, --test_gui) ###
     parser.add_argument("--load_weights", type=str, default="deadbeef") 
-    # only if continuing to train on existing weights - if just testing use --test_only
+    # only if continuing to train on existing weights (if just testing use --test)
     # also this will automatically save the weights back as well
-    parser.add_argument("--save_weights", type=str, default="deafbeef")
+    parser.add_argument("--save_weights", type=str, default="deadbeef")
     parser.add_argument("--bert", action="store_true")
     parser.add_argument("--test", type=str, default="deadbeef") 
     parser.add_argument("--from_titles", action="store_true") 
     # can't select both --save_weights and --test_only, it'll just train and save the weights
     # only select this if you want to reset training and not continue from the last checkpoint
-    parser.add_argument("--test_gui", action="store_true")
+    parser.add_argument("--predict_gui", action="store_true")
     # if this is selected, will automatically load weights and start single-test interface
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--num_epochs", type=int, default=10)
@@ -169,7 +169,7 @@ def main(args):
         model = tf.keras.models.load_model(os.path.join(weights_dir, args.test))
         accuracy = test(model, test_abstracts, test_labels, args)
         print("Testing accuracy: ", accuracy)
-    if not args.test_gui:
+    if not args.predict_gui:
         # load or create new model
         if args.load_weights != "deadbeef":
             if args.load_weights == "":
@@ -206,7 +206,12 @@ def main(args):
         # run simple gui interface so you can try it yourself!
         # TODO: make the interface nice with tkinter
         test_abstract = input("Paste an abstract here: ").strip()
-        model = tf.keras.models.load_model(os.path.join(weights_dir, last_checkpoint_fname))
+        if args.load_weights == "" | args.load_weights == "deadbeef":
+            model_load_name = last_checkpoint_fname
+        else:
+            model_load_name = args.load_weights
+        print("path: ", os.path.join(weights_dir, model_load_name))
+        model = tf.keras.models.load_model(os.path.join(weights_dir, model_load_name))
         guess = test_one(model, test_abstract, args)
         print(f"This is probably written by {np.array(['a human', 'chatgpt'])[tf.math.argmax(guess[0])]} with probabilities [human, chatgpt] = {tf.nn.softmax(guess[0])}")
 
