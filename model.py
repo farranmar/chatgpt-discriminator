@@ -97,6 +97,9 @@ def test(model, test_abstracts, test_labels, args):
     print("testing")
     batch_size = args.batch_size
     num_batches = math.floor(test_abstracts.shape[0] / batch_size)
+    indices = tf.random.shuffle(tf.range(test_abstracts.shape[0]-1))
+    test_abstracts = tf.gather(test_abstracts, indices)
+    test_labels = tf.gather(test_labels, indices)
     test_abstracts = test_abstracts[:batch_size*num_batches]
     test_labels = test_labels[:batch_size*num_batches]
     if args.bert:
@@ -150,11 +153,19 @@ def main(args):
     train_abstract, train_labels, test_abstracts, test_labels = get_data(train_path, test_path)
 
     num_train = math.floor(train_labels.shape[0]*args.percent_data)
-    train_abstract = train_abstract[:num_train]
-    train_labels = train_labels[:num_train]
     num_test = math.floor(test_labels.shape[0]*args.percent_data)
+    
+    test_indices = tf.random.shuffle(tf.range(num_test-1))
+    test_abstracts = tf.gather(test_abstracts, test_indices)
+    test_labels = tf.gather(test_labels, test_indices)
     test_abstracts = test_abstracts[:num_test]
     test_labels = test_labels[:num_test]
+
+    train_indices = tf.random.shuffle(tf.range(num_train-1))
+    train_abstracts = tf.gather(train_abstracts, train_indices)
+    train_labels = tf.gather(train_labels, train_indices)
+    train_abstracts = train_abstracts[:num_train]
+    train_labels = train_labels[:num_train]
 
     print("Data loaded")
     print("train_labels.shape:", train_labels.shape)
@@ -169,7 +180,7 @@ def main(args):
         model = tf.keras.models.load_model(os.path.join(weights_dir, args.test))
         accuracy = test(model, test_abstracts, test_labels, args)
         print("Testing accuracy: ", accuracy)
-    if not args.predict_gui:
+    elif not args.predict_gui:
         # load or create new model
         if args.load_weights != "deadbeef":
             if args.load_weights == "":
