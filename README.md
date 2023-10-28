@@ -39,8 +39,8 @@ Initially, we planned to train our model by locking distilBert's weights and onl
 
 | Dataset | Accuracy |
 | ----- | -------- |
-| Rephrased human abstracts | 98% |
-| Generated from titles | --% |
+| Rephrased human abstracts | 79% |
+| Generated from titles | 98% |
 
 
 ## Limitations
